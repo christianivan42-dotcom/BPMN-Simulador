@@ -89,8 +89,55 @@ npm run dev
 
 > **Modo demo sin IA:** por defecto `USE_MOCK_LLM=true` en `backend/.env` → la app funciona
 > sin consumir cuota de IA (respuestas simuladas). Para respuestas reales del asistente,
-> pon `USE_MOCK_LLM=false` y añade **tu** clave de un proveedor (Gemini, Groq o Deepseek;
-> todos con plan gratuito).
+> pon `USE_MOCK_LLM=false` y configura **al menos una** clave (ver abajo).
+
+---
+
+## 🔑 Configurar las API keys de los LLM
+
+El asistente de IA funciona con **varios proveedores** y un **router con fallback automático**:
+usa el que tengas configurado y, si uno falla o se queda sin cuota, **salta al siguiente solo**.
+No necesitas todos — **con uno basta**.
+
+### Cómo configurarlas
+
+1. Copia la plantilla: `cp backend/.env.example backend/.env`
+2. Edita `backend/.env`, pon `USE_MOCK_LLM=false` y rellena la(s) clave(s) que quieras:
+
+```bash
+USE_MOCK_LLM=false
+GEMINI_API_KEY=tu_clave_aqui      # Google AI Studio
+GROQ_API_KEY=tu_clave_aqui        # Groq
+DEEPSEEK_API_KEY=tu_clave_aqui    # Deepseek
+```
+3. **Reinicia el backend** para que tome los cambios.
+
+### Proveedores soportados
+
+| Proveedor | Variable | Dónde obtener la clave | Costo |
+|---|---|---|---|
+| **Google Gemini** (recomendado) | `GEMINI_API_KEY` | <https://aistudio.google.com> | Gratis (cuota generosa) |
+| **Groq** (muy rápido) | `GROQ_API_KEY` | <https://console.groq.com> | Gratis |
+| **Deepseek** | `DEEPSEEK_API_KEY` | <https://platform.deepseek.com> | De pago |
+| **Ollama** (local/offline) | *(sin clave)* | <https://ollama.com> | Gratis, corre en tu PC |
+
+### Preguntas frecuentes
+
+- **¿Tengo que poner todas?** No. Con **una sola** ya funciona. El sistema usa lo que tengas.
+- **¿Cuál me conviene?** **Gemini** (gratis y capaz) y/o **Groq** (gratis y muy rápido). Lo ideal
+  es poner **las dos**: si una se queda sin cuota, el router cae a la otra automáticamente.
+- **¿Si no pongo ninguna?** Deja `USE_MOCK_LLM=true` y la app corre en **modo demo** (respuestas
+  simuladas, sin IA real) — perfecto para probar la interfaz sin claves.
+- **¿Y si quiero usar otro modelo?**
+  - **Local/offline (sin nube ni claves):** instala [Ollama](https://ollama.com), descarga un
+    modelo (`ollama pull llama3.2`) y ajusta las variables `OLLAMA_*` del `.env`. Todo corre en tu máquina.
+  - **Otro proveedor en la nube no listado** (p. ej. OpenAI): no está integrado por defecto; requiere
+    añadir un pequeño adaptador en `backend/app/services/llm_client_service.py`.
+
+> **Orden de preferencia/fallback** del router: Gemini Flash → Groq → Gemini Pro → Deepseek/Ollama.
+> Los proveedores sin clave simplemente se omiten.
+
+> ⚠️ **Nunca subas tus claves a GitHub.** Van en `backend/.env`, que ya está excluido por `.gitignore`.
 
 ---
 
