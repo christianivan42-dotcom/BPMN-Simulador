@@ -33,7 +33,11 @@ configurar, interpretar y mejorar sus procesos.
 
 ## 📸 Capturas
 
-**Simulación visual en vivo** — los tokens recorren el proceso mientras se calculan los KPIs (cycle time, espera, costo, cuellos de botella), con asistente de IA y exportación a Excel:
+**🎬 Simulación en acción** — los *tokens* recorren el proceso en tiempo real mientras se calculan los KPIs:
+
+![Demo de la simulación](screenshots/demo-simulacion.gif)
+
+**Simulación visual** — KPIs (cycle time, espera, costo, cuellos de botella), con asistente de IA y exportación a Excel:
 
 ![Simulación de procesos](screenshots/3-simulacion.png)
 
