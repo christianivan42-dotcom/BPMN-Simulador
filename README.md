@@ -48,7 +48,14 @@ git --version
 
 ## 🚀 Instalación y ejecución
 
-### Opción A — Automática (Mac / Linux)
+> **Cómo funciona:** la aplicación son **dos servidores que corren a la vez**:
+> el **backend** (API en Python/FastAPI, puerto **8010**) y el **frontend** (interfaz en
+> React, puerto **5173**). El frontend consume la API del backend, así que **ambos deben
+> estar encendidos** al mismo tiempo. Abre la app en el frontend (5173).
+
+### Opción A — Automática (Mac / Linux) ⭐ recomendada
+
+Levanta backend **y** frontend con un solo comando:
 
 ```bash
 git clone <URL-DE-TU-REPO>.git
@@ -56,37 +63,55 @@ cd agente-IA-prueba-master
 bash scripts/start-dev.sh
 ```
 
-El script crea el entorno virtual, instala dependencias, copia `.env.example → .env` y
-levanta **backend + frontend** juntos.
+El script crea el entorno virtual, instala dependencias, copia los `.env.example → .env` y
+arranca los dos servidores. Para **detenerlos**: `Ctrl + C`.
 
-### Opción B — Manual (cualquier sistema)
+### Opción B — Manual (cualquier sistema, incl. Windows)
 
-**1) Backend** (terminal 1):
+Necesitas **dos terminales abiertas a la vez** (una por servidor):
+
+**Terminal 1 — Backend (API, puerto 8010):**
 
 ```bash
 cd backend
-python3 -m venv venv               # crea el entorno virtual
+python3 -m venv venv               # crea el entorno virtual (una sola vez)
 source venv/bin/activate           # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt    # instala dependencias (una sola vez)
 cp .env.example .env               # Windows: copy .env.example .env
 uvicorn app.main:app --reload --port 8010
 ```
 
-**2) Frontend** (terminal 2):
+**Terminal 2 — Frontend (interfaz, puerto 5173):**
 
 ```bash
 cd frontend
-npm install
+npm install                        # instala dependencias (una sola vez)
 cp .env.example .env               # Windows: copy .env.example .env
 npm run dev
 ```
 
+Deja **ambas terminales abiertas**. Para detener cada servidor: `Ctrl + C`.
+
 ### Abrir la aplicación
 
-| Servicio | URL |
+| Servicio | URL | Para qué |
+|---|---|---|
+| **Aplicación (UI)** | <http://127.0.0.1:5173> | Aquí trabajas |
+| **API + documentación** | <http://127.0.0.1:8010/api/docs> | API interactiva (Swagger) |
+
+### ⚙️ Conexión frontend ↔ backend
+
+El frontend sabe dónde está el backend por la variable `VITE_API_BASE_URL` en `frontend/.env`
+(por defecto `http://127.0.0.1:8010`). Si cambias el puerto del backend, actualiza también ese valor.
+
+### 🛠️ Problemas comunes
+
+| Síntoma | Solución |
 |---|---|
-| **Aplicación** | <http://127.0.0.1:5173> |
-| **API + documentación** | <http://127.0.0.1:8010/api/docs> |
+| El frontend dice **"no se conecta con el backend"** | Verifica que el backend (terminal 1) esté corriendo y que `VITE_API_BASE_URL` en `frontend/.env` apunte a `http://127.0.0.1:8010`. Reinicia `npm run dev` tras cambiar el `.env`. |
+| `command not found: python3` / `node` | Falta instalar Python 3.11+ o Node 18+ (ver Requisitos previos). |
+| Puerto **8010 / 5173 ocupado** | Cierra el proceso que lo usa o cambia el puerto (y actualiza `VITE_API_BASE_URL`). |
+| El asistente IA responde genérico | Estás en modo demo (`USE_MOCK_LLM=true`). Configura una API key y pon `USE_MOCK_LLM=false` (ver abajo). |
 
 > **Modo demo sin IA:** por defecto `USE_MOCK_LLM=true` en `backend/.env` → la app funciona
 > sin consumir cuota de IA (respuestas simuladas). Para respuestas reales del asistente,
