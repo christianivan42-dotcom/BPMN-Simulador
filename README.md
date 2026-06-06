@@ -53,18 +53,26 @@ git --version
 > React, puerto **5173**). El frontend consume la API del backend, así que **ambos deben
 > estar encendidos** al mismo tiempo. Abre la app en el frontend (5173).
 
-### Opción A — Automática (Mac / Linux) ⭐ recomendada
+### Opción A — Automática (un solo comando) ⭐ recomendada
 
-Levanta backend **y** frontend con un solo comando:
+Levanta backend **y** frontend automáticamente (crea el entorno virtual, instala
+dependencias y copia los `.env.example → .env`):
 
+**Mac / Linux:**
 ```bash
 git clone <URL-DE-TU-REPO>.git
 cd agente-IA-prueba-master
-bash scripts/start-dev.sh
+bash scripts/start-dev.sh        # Ctrl+C para detener
 ```
 
-El script crea el entorno virtual, instala dependencias, copia los `.env.example → .env` y
-arranca los dos servidores. Para **detenerlos**: `Ctrl + C`.
+**Windows** (doble clic en `scripts\start-dev.bat`, o desde `cmd`):
+```bat
+git clone <URL-DE-TU-REPO>.git
+cd agente-IA-prueba-master
+scripts\start-dev.bat
+```
+> En Windows se abren **dos ventanas** (backend y frontend); ciérralas para detener.
+> *(Requiere tener Python y Node en el PATH. También puedes usar la Opción B manual.)*
 
 ### Opción B — Manual (cualquier sistema, incl. Windows)
 
