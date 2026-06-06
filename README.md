@@ -26,6 +26,9 @@ configurar, interpretar y mejorar sus procesos.
   **interpreta resultados**, **compara AS-IS vs TO-BE** y recomienda **metodología de mejora**
   (Lean, Six Sigma/DMAIC, Teoría de Restricciones, BPR, automatización).
 
+> 📘 ¿Dudas con la simulación? Consulta el **[Manual del Simulador](MANUAL_SIMULACION.md)** —
+> explica todas las opciones (recursos, horarios, distribuciones, costos…) y cuándo llenar cada una.
+
 ---
 
 ## 📸 Capturas
