@@ -42,6 +42,9 @@ proceso 1 (es) (1).bpmn
 *.bak
 *.tmp
 
+# Capturas y GIFs de marketing (para LinkedIn, no son parte del programa)
+screenshots/
+
 # ── OS / editores ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

@@ -31,30 +31,6 @@ configurar, interpretar y mejorar sus procesos.
 
 ---
 
-## 📸 Capturas
-
-**🎬 Simulación en acción** — los *tokens* recorren el proceso en tiempo real mientras se calculan los KPIs:
-
-![Demo de la simulación](screenshots/demo-simulacion.gif)
-
-**Simulación visual** — KPIs (cycle time, espera, costo, cuellos de botella), con asistente de IA y exportación a Excel:
-
-![Simulación de procesos](screenshots/3-simulacion.png)
-
-**Editor BPMN 2.0 (AS-IS / TO-BE)** — con nombre del proceso y su ubicación en el mapa:
-
-![Editor BPMN](screenshots/2-bpmn-editor.png)
-
-**Mapa de conocimiento** — la organización conectada: empresa → mapa de procesos → diagramas BPMN:
-
-![Mapa de conocimiento](screenshots/4-conocimiento.png)
-
-**Mapa de procesos** (ISO-9001: estratégicos / operativos / apoyo):
-
-![Mapa de procesos](screenshots/1-mapa-procesos.png)
-
----
-
 ## 📦 Requisitos previos
 
 | Herramienta | Versión | Para qué |
