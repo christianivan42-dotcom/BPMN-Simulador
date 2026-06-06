@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Play, Pause, RotateCcw, X, Gauge, Activity, Boxes, GitBranch, Zap, Clock, MousePointerClick, ShieldAlert, Timer, Mail, AlertTriangle, ChevronUp, CalendarDays, Coins, Brain, Sparkles, Lightbulb, Wand2, GitCompare, Loader2 } from "lucide-react";
+import { Play, Pause, RotateCcw, X, Gauge, Activity, Boxes, GitBranch, Zap, Clock, MousePointerClick, ShieldAlert, Timer, Mail, AlertTriangle, ChevronUp, CalendarDays, Coins, Brain, Sparkles, Lightbulb, Wand2, GitCompare, Loader2, FileSpreadsheet } from "lucide-react";
 import { buildSimGraph, type SimGraph, type SimNode, type EventTrigger } from "../../bpmn/sim/simGraph";
 import { runSimulation, type SimConfig, type SimResult } from "../../bpmn/sim/simEngine";
 import { TokenAnimator, type AnimatorTick } from "../../bpmn/sim/tokenAnimator";
@@ -8,8 +8,72 @@ import { TIME_UNIT_LABELS, UNIT_TO_MIN, type TimeUnit } from "../../bpmn/sim/uni
 import { defaultTimetables, type Timetable } from "../../bpmn/sim/calendar";
 import { expertAsk } from "../../api";
 import { ChatMarkdown } from "../ChatMarkdown";
+import { downloadXls, cell, hdr, title, sub, type XlsSheet } from "../../bpmn/sim/simExport";
 
 interface Modeler { get: (name: string) => unknown; }
+
+// ── Exportación a Excel ──────────────────────────────────────────────────────
+interface SimExportData {
+  scenarioLabel: string; name: string; currency: string;
+  completed: number; started: number;
+  avgCycle: number; minCycle: number; maxCycle: number; avgCycleExcl: number;
+  avgProcessing: number; avgWaiting: number; avgTransfer: number;
+  cycleEfficiency: number; throughputPerHour: number; totalCost: number;
+  activities: Array<{ name: string; visits: number; proc: number; wait: number; cost: number; durOver: number; costOver: number }>;
+  resources: Array<{ name: string; capacity: number; utilization: number; cost: number }>;
+}
+const r2 = (n: number) => Math.round((n || 0) * 100) / 100;
+const exportKey = (scenario: string | undefined, companyId: string | undefined) => `bpms_sim_data_${scenario ?? "x"}_${companyId ?? "x"}`;
+
+function kpiRows(d: SimExportData): Array<[string, number, string]> {
+  return [
+    ["Instancias completadas", d.completed, `de ${d.started}`],
+    ["Cycle time medio (reloj)", r2(d.avgCycle), "min"],
+    ["Cycle time mínimo", r2(d.minCycle), "min"],
+    ["Cycle time máximo", r2(d.maxCycle), "min"],
+    ["Cycle time hábil (sin off-horario)", r2(d.avgCycleExcl), "min"],
+    ["Tiempo de proceso medio", r2(d.avgProcessing), "min"],
+    ["Tiempo de espera medio", r2(d.avgWaiting), "min"],
+    ["Traslado medio", r2(d.avgTransfer), "min"],
+    ["Eficiencia (proc/cycle)", r2(d.cycleEfficiency * 100), "%"],
+    ["Throughput", r2(d.throughputPerHour), "/h"],
+    ["Costo total", r2(d.totalCost), d.currency],
+  ];
+}
+
+function stackedSheet(name: string, d: SimExportData): XlsSheet {
+  const rows = [
+    [title(`Simulación — ${d.name}`)],
+    [sub(`Escenario: ${d.scenarioLabel}`)],
+    [],
+    [sub("Indicadores")],
+    [hdr("Indicador"), hdr("Valor"), hdr("Unidad")],
+    ...kpiRows(d).map(([k, v, u]) => [cell(k), cell(v), cell(u)]),
+    [],
+    [sub("Por actividad")],
+    [hdr("Actividad"), hdr("Visitas"), hdr("Proc. medio (min)"), hdr("Espera media (min)"), hdr(`Costo (${d.currency})`), hdr("Excede duración"), hdr("Excede costo")],
+    ...d.activities.map((a) => [cell(a.name), cell(a.visits), cell(r2(a.proc)), cell(r2(a.wait)), cell(r2(a.cost)), cell(a.durOver), cell(a.costOver)]),
+    [],
+    [sub("Recursos")],
+    [hdr("Recurso"), hdr("Capacidad"), hdr("Utilización %"), hdr(`Costo (${d.currency})`)],
+    ...d.resources.map((rs) => [cell(rs.name), cell(rs.capacity), cell(r2(rs.utilization * 100)), cell(r2(rs.cost))]),
+  ];
+  return { name, rows };
+}
+
+function comparisonSheet(asis: SimExportData, tobe: SimExportData): XlsSheet {
+  const ka = kpiRows(asis), kt = kpiRows(tobe);
+  const rows = [
+    [title("Comparación AS-IS vs TO-BE")],
+    [],
+    [hdr("Indicador"), hdr("AS-IS"), hdr("TO-BE"), hdr("Δ (TO-BE − AS-IS)"), hdr("Unidad")],
+    ...ka.map(([label, av, unit], i) => {
+      const tv = kt[i]?.[1] ?? 0;
+      return [cell(label), cell(av), cell(tv), cell(r2(tv - av)), cell(unit)];
+    }),
+  ];
+  return { name: "Comparación", rows };
+}
 
 const AI_ROLE =
   "Eres un consultor experto en simulación cuantitativa de procesos de negocio " +
@@ -260,8 +324,9 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
 
     const res = runSimulation(graph, config);
     setResult(res); setHasRun(true); setSection("results");
-    // Persiste un resumen del escenario para que la IA pueda comparar AS-IS vs TO-BE
+    // Persiste resumen (IA) y datos estructurados (export Excel) del escenario
     try { localStorage.setItem(summaryKey(scenario, companyId), buildResultText(res)); } catch { /* ok */ }
+    try { localStorage.setItem(exportKey(scenario, companyId), JSON.stringify(buildExportData(res))); } catch { /* ok */ }
     const anim = animatorRef.current;
     if (anim) { anim.load(res.segments, res.maxTime); anim.setSpeed(speed); anim.play(); }
   }
@@ -288,6 +353,47 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
     ];
     if (r.resources.length) L.push("Recursos (utilización): " + r.resources.map((rs) => `${rs.name} ${(rs.utilization * 100).toFixed(0)}%`).join(", "));
     return L.join("\n");
+  }
+
+  // ── Exportación a Excel (AS-IS / TO-BE) ─────────────────────────────────────
+  function buildExportData(res: SimResult): SimExportData {
+    let name = "Proceso";
+    try {
+      const raw = localStorage.getItem(`bpms_bpmn_meta_${companyId}`);
+      if (raw) { const m = JSON.parse(raw); if ((m.name || "").trim()) name = m.name.trim(); }
+    } catch { /* ok */ }
+    return {
+      scenarioLabel, name, currency: res.currency,
+      completed: res.completed, started: res.started,
+      avgCycle: res.avgCycle, minCycle: res.minCycle, maxCycle: res.maxCycle, avgCycleExcl: res.avgCycleExcl,
+      avgProcessing: res.avgProcessing, avgWaiting: res.avgWaiting, avgTransfer: res.avgTransfer,
+      cycleEfficiency: res.cycleEfficiency, throughputPerHour: res.throughputPerHour, totalCost: res.totalCost,
+      activities: res.activities.map((a) => ({ name: a.name, visits: a.visits, proc: a.visits ? a.totalProcessing / a.visits : 0, wait: a.visits ? a.totalWaiting / a.visits : 0, cost: a.cost, durOver: a.durOverThreshold, costOver: a.costOverThreshold })),
+      resources: res.resources.map((rs) => ({ name: rs.name, capacity: rs.capacity, utilization: rs.utilization, cost: rs.cost })),
+    };
+  }
+  const fileSafe = (s: string) => s.replace(/[^\w-]+/g, "_").slice(0, 40) || "proceso";
+
+  function exportCurrent() {
+    if (!result) return;
+    const d = buildExportData(result);
+    downloadXls(`Simulacion_${fileSafe(d.name)}_${scenario ?? "escenario"}`, [stackedSheet(d.scenarioLabel, d)]);
+  }
+
+  function exportBoth() {
+    if (!result) return;
+    const cur = buildExportData(result);
+    try { localStorage.setItem(exportKey(scenario, companyId), JSON.stringify(cur)); } catch { /* ok */ }
+    const otherScenario = scenario === "asis" ? "tobe" : "asis";
+    let other: SimExportData | null = null;
+    try { const raw = localStorage.getItem(exportKey(otherScenario, companyId)); if (raw) other = JSON.parse(raw) as SimExportData; } catch { /* ok */ }
+    if (!other) {
+      alert(`Primero ejecuta la simulación del ${otherScenario === "asis" ? "AS-IS" : "TO-BE"} (en la otra pestaña) para exportar ambos escenarios.`);
+      return;
+    }
+    const asis = scenario === "asis" ? cur : other;
+    const tobe = scenario === "asis" ? other : cur;
+    downloadXls(`Simulacion_${fileSafe(cur.name)}_ASIS-vs-TOBE`, [comparisonSheet(asis, tobe), stackedSheet("AS-IS", asis), stackedSheet("TO-BE", tobe)]);
   }
 
   async function askAi(title: string, query: string, includeResult: boolean, extra?: string) {
@@ -589,7 +695,12 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
         )}
 
         {section === "results" && result && (
-          <ResultsView result={result} onInterpret={() => void askAi("Interpretación de resultados", `Interpreta los resultados de la simulación de ${scenarioLabel}. Identifica cuellos de botella, esperas, sobrecostos y baja eficiencia con base en los números, y di concretamente QUÉ se puede mejorar y por qué.`, true)} />
+          <ResultsView
+            result={result}
+            onInterpret={() => void askAi("Interpretación de resultados", `Interpreta los resultados de la simulación de ${scenarioLabel}. Identifica cuellos de botella, esperas, sobrecostos y baja eficiencia con base en los números, y di concretamente QUÉ se puede mejorar y por qué.`, true)}
+            onExport={exportCurrent}
+            onExportBoth={exportBoth}
+          />
         )}
 
         {section === "ia" && (
@@ -631,7 +742,7 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
   );
 }
 
-function ResultsView({ result, onInterpret }: { result: SimResult; onInterpret: () => void }) {
+function ResultsView({ result, onInterpret, onExport, onExportBoth }: { result: SimResult; onInterpret: () => void; onExport: () => void; onExportBoth: () => void }) {
   const cur = result.currency;
   const kpis: Array<[string, string]> = [
     ["Cycle time (reloj)", fmtTime(result.avgCycle)],
@@ -646,7 +757,11 @@ function ResultsView({ result, onInterpret }: { result: SimResult; onInterpret: 
   ];
   return (
     <div className="sim-results">
-      <button className="sim-ia-inline-btn" onClick={onInterpret}><Sparkles size={13} /> Interpretar con IA</button>
+      <div className="sim-results-toolbar">
+        <button className="sim-ia-inline-btn" onClick={onInterpret}><Sparkles size={13} /> Interpretar con IA</button>
+        <button className="sim-xls-btn" onClick={onExport} title="Exportar este escenario a Excel"><FileSpreadsheet size={13} /> Excel</button>
+        <button className="sim-xls-btn" onClick={onExportBoth} title="Exportar AS-IS + TO-BE con comparación"><FileSpreadsheet size={13} /> AS-IS + TO-BE</button>
+      </div>
       {result.warnings.length > 0 && <div className="sim-warn">{result.warnings.map((w, i) => <div key={i}>⚠ {w}</div>)}</div>}
       <div className="sim-kpi-grid">
         {kpis.map(([k, v]) => (

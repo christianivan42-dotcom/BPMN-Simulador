@@ -21,6 +21,7 @@ configurar, interpretar y mejorar sus procesos.
   - **7 distribuciones**, unidades de tiempo, **recursos con horarios/calendarios**,
     costos fijos, umbrales y **eventos de borde** (boundary events). Sin límite de corridas.
   - Edición **por elemento** haciendo clic en el diagrama.
+  - **Exportación a Excel** de los resultados (escenario actual o **AS-IS + TO-BE con hoja de comparación**).
 - **AI Workspace**: asistente experto que **lee el diagrama**, ayuda a **llenar los datos**,
   **interpreta resultados**, **compara AS-IS vs TO-BE** y recomienda **metodología de mejora**
   (Lean, Six Sigma/DMAIC, Teoría de Restricciones, BPR, automatización).

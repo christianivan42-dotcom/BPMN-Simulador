@@ -8109,6 +8109,15 @@ input:focus, select:focus, textarea:focus {
   color: #fff; background: linear-gradient(135deg, var(--indigo), var(--teal));
 }
 .sim-ia-inline-btn:hover { filter: brightness(1.07); }
+.sim-results-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.sim-results-toolbar .sim-ia-inline-btn { margin-bottom: 0; }
+.sim-xls-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px;
+  border: 1px solid var(--green); border-radius: 8px; cursor: pointer; font-weight: 700; font-size: .76rem;
+  color: var(--green); background: var(--surface);
+}
+.sim-xls-btn:hover { background: rgba(5,150,105,.08); }
+.sim-xls-btn svg { color: var(--green); }
 
 /* ── TopBar: botón IA Workspace ──────────────────────────────────────────── */
 .shell-topbar-ai { display: inline-flex; align-items: center; gap: 5px; width: auto; padding: 0 10px; }
