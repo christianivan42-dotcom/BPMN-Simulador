@@ -42,6 +42,10 @@ proceso 1 (es) (1).bpmn
 *.bak
 *.tmp
 
+# Capturas para marketing (no son parte del programa). Quita esta línea si
+# quieres incluirlas en el README del repo.
+screenshots/
+
 # ── OS / editores ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
