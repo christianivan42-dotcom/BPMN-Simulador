@@ -51,32 +51,45 @@ function buildLocalOrgGraph(company: Company): OrgGraph {
     }
   }
 
-  // Diagrama BPMN: nombre + ubicación (compartidos por AS-IS/TO-BE) desde localStorage.
-  // Se ubica BAJO el proceso del mapa elegido; si no, cuelga de la empresa.
-  let meta: { name?: string; mapItemId?: string } = {};
-  try { const raw = localStorage.getItem(`bpms_bpmn_meta_${company.id}`); if (raw) meta = JSON.parse(raw); } catch { /* ok */ }
+  // Diagramas BPMN: cada proceso del índice se ubica BAJO su proceso del mapa
+  // (o cuelga de la empresa si no está ubicado), con sus diagramas AS-IS/TO-BE.
   const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
-  const dgName = (meta.name || "").trim();
-  const locatedItem = meta.mapItemId ? items.find((i) => i.id === meta.mapItemId) : undefined;
-  const parent = locatedItem ? mapNodeId(locatedItem.id) : companyId;
-  const asis = read(`bpms_bpmn_asis_${company.id}`) ?? "";
-  const tobe = read(`bpms_bpmn_tobe_${company.id}`) ?? "";
-  const hasAsis = hasRealDiagram(asis);
-  const hasTobe = hasRealDiagram(tobe);
-  // Nodo "proceso BPMN" si hay nombre o algún diagrama modelado
-  if (dgName || hasAsis || hasTobe) {
-    const procId = `bpmnproc:${company.id}`;
-    nodes.push({ id: procId, label: dgName || "Proceso BPMN", type: "process", level: 2, area: locatedItem?.categoria ?? null });
-    edges.push({ source: parent, target: procId, rel: "modela" });
+  let procList: Array<{ id: string; name?: string; mapItemId?: string }> = [];
+  try {
+    const raw = read(`bpms_bpmn_index_${company.id}`);
+    if (raw) procList = JSON.parse(raw);
+  } catch { /* ok */ }
+  // Compatibilidad con el esquema antiguo (un solo diagrama por empresa)
+  if (procList.length === 0) {
+    let meta: { name?: string; mapItemId?: string } = {};
+    try { const m = read(`bpms_bpmn_meta_${company.id}`); if (m) meta = JSON.parse(m); } catch { /* ok */ }
+    if (read(`bpms_bpmn_asis_${company.id}`) || read(`bpms_bpmn_tobe_${company.id}`) || meta.name) {
+      procList = [{ id: `legacy_${company.id}`, name: meta.name, mapItemId: meta.mapItemId }];
+    }
+  }
+  const dgmKey = (procId: string, side: string) => procId.startsWith("legacy_")
+    ? `bpms_bpmn_${side}_${company.id}`
+    : `bpms_bpmn_${side}_${procId}`;
+
+  for (const proc of procList) {
+    const hasAsis = hasRealDiagram(read(dgmKey(proc.id, "asis")));
+    const hasTobe = hasRealDiagram(read(dgmKey(proc.id, "tobe")));
+    const dgName = (proc.name || "").trim();
+    if (!dgName && !hasAsis && !hasTobe) continue;
+    const located = proc.mapItemId ? items.find((i) => i.id === proc.mapItemId) : undefined;
+    const parent = located ? mapNodeId(located.id) : companyId;
+    const procNodeId = `bpmnproc:${proc.id}`;
+    nodes.push({ id: procNodeId, label: dgName || "Proceso BPMN", type: "process", level: 2, area: located?.categoria ?? null });
+    edges.push({ source: parent, target: procNodeId, rel: "modela" });
     if (hasAsis) {
-      const id = `bpmn:asis:${company.id}`;
+      const id = `bpmn:asis:${proc.id}`;
       nodes.push({ id, label: "Diagrama AS-IS", type: "artifact", artifact_type: "BPMN AS-IS" });
-      edges.push({ source: procId, target: id, rel: "AS-IS" });
+      edges.push({ source: procNodeId, target: id, rel: "AS-IS" });
     }
     if (hasTobe) {
-      const id = `bpmn:tobe:${company.id}`;
+      const id = `bpmn:tobe:${proc.id}`;
       nodes.push({ id, label: "Diagrama TO-BE", type: "artifact", artifact_type: "BPMN TO-BE" });
-      edges.push({ source: procId, target: id, rel: "TO-BE" });
+      edges.push({ source: procNodeId, target: id, rel: "TO-BE" });
     }
   }
 

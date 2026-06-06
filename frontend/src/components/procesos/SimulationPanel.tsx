@@ -173,7 +173,7 @@ function DistributionEditor({ value, onChange }: { value: DistInput; onChange: (
   );
 }
 
-export function SimulationPanel({ modeler, onClose, scenario, companyId }: { modeler: Modeler; onClose: () => void; scenario?: "asis" | "tobe"; companyId?: string }) {
+export function SimulationPanel({ modeler, onClose, scenario, processId, processName }: { modeler: Modeler; onClose: () => void; scenario?: "asis" | "tobe"; processId?: string; processName?: string }) {
   const graph = useMemo<SimGraph>(() => buildSimGraph(modeler.get("elementRegistry") as never), [modeler]);
   const scenarioLabel = scenario === "tobe" ? "TO-BE (propuesto)" : scenario === "asis" ? "AS-IS (actual)" : "el proceso";
 
@@ -325,8 +325,8 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
     const res = runSimulation(graph, config);
     setResult(res); setHasRun(true); setSection("results");
     // Persiste resumen (IA) y datos estructurados (export Excel) del escenario
-    try { localStorage.setItem(summaryKey(scenario, companyId), buildResultText(res)); } catch { /* ok */ }
-    try { localStorage.setItem(exportKey(scenario, companyId), JSON.stringify(buildExportData(res))); } catch { /* ok */ }
+    try { localStorage.setItem(summaryKey(scenario, processId), buildResultText(res)); } catch { /* ok */ }
+    try { localStorage.setItem(exportKey(scenario, processId), JSON.stringify(buildExportData(res))); } catch { /* ok */ }
     const anim = animatorRef.current;
     if (anim) { anim.load(res.segments, res.maxTime); anim.setSpeed(speed); anim.play(); }
   }
@@ -357,11 +357,7 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
 
   // ── Exportación a Excel (AS-IS / TO-BE) ─────────────────────────────────────
   function buildExportData(res: SimResult): SimExportData {
-    let name = "Proceso";
-    try {
-      const raw = localStorage.getItem(`bpms_bpmn_meta_${companyId}`);
-      if (raw) { const m = JSON.parse(raw); if ((m.name || "").trim()) name = m.name.trim(); }
-    } catch { /* ok */ }
+    const name = (processName || "").trim() || "Proceso";
     return {
       scenarioLabel, name, currency: res.currency,
       completed: res.completed, started: res.started,
@@ -383,10 +379,10 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
   function exportBoth() {
     if (!result) return;
     const cur = buildExportData(result);
-    try { localStorage.setItem(exportKey(scenario, companyId), JSON.stringify(cur)); } catch { /* ok */ }
+    try { localStorage.setItem(exportKey(scenario, processId), JSON.stringify(cur)); } catch { /* ok */ }
     const otherScenario = scenario === "asis" ? "tobe" : "asis";
     let other: SimExportData | null = null;
-    try { const raw = localStorage.getItem(exportKey(otherScenario, companyId)); if (raw) other = JSON.parse(raw) as SimExportData; } catch { /* ok */ }
+    try { const raw = localStorage.getItem(exportKey(otherScenario, processId)); if (raw) other = JSON.parse(raw) as SimExportData; } catch { /* ok */ }
     if (!other) {
       alert(`Primero ejecuta la simulación del ${otherScenario === "asis" ? "AS-IS" : "TO-BE"} (en la otra pestaña) para exportar ambos escenarios.`);
       return;
@@ -413,9 +409,9 @@ export function SimulationPanel({ modeler, onClose, scenario, companyId }: { mod
   }
 
   function askCompare() {
-    const me = result ? buildResultText(result) : localStorage.getItem(summaryKey(scenario, companyId));
+    const me = result ? buildResultText(result) : localStorage.getItem(summaryKey(scenario, processId));
     const otherScenario = scenario === "asis" ? "tobe" : "asis";
-    const other = localStorage.getItem(summaryKey(otherScenario, companyId));
+    const other = localStorage.getItem(summaryKey(otherScenario, processId));
     if (!other) {
       setSection("ia"); setAiTitle("Comparar AS-IS vs TO-BE"); setAiAnswer(null);
       setAiError(`Primero ejecuta la simulación del ${otherScenario === "asis" ? "AS-IS" : "TO-BE"} (en la otra pestaña) para poder comparar.`);

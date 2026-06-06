@@ -254,11 +254,13 @@ interface BpmnViewerProps {
   onChange?: (xml: string) => void;
   /** Escenario (AS-IS / TO-BE) — lo usa el asistente IA de la simulación. */
   scenario?: "asis" | "tobe";
-  /** Id de empresa — para persistir resultados de simulación por escenario. */
-  companyId?: string;
+  /** Id del proceso — para persistir resultados de simulación por proceso/escenario. */
+  processId?: string;
+  /** Nombre del proceso — para títulos y export. */
+  processName?: string;
 }
 
-export function BpmnViewer({ xml, height = 480, caseId, onSaved, overlays, onChange, scenario, companyId }: BpmnViewerProps) {
+export function BpmnViewer({ xml, height = 480, caseId, onSaved, overlays, onChange, scenario, processId, processName }: BpmnViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -709,7 +711,7 @@ export function BpmnViewer({ xml, height = 480, caseId, onSaved, overlays, onCha
             className="bpmn-sim-dock"
             style={{ height: fullscreen ? "calc(100vh - 50px)" : `${height}px` }}
           >
-            <SimulationPanel modeler={modelerRef.current} onClose={() => setSimOpen(false)} scenario={scenario} companyId={companyId} />
+            <SimulationPanel modeler={modelerRef.current} onClose={() => setSimOpen(false)} scenario={scenario} processId={processId} processName={processName} />
           </div>
         )}
       </div>

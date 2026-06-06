@@ -8124,6 +8124,26 @@ input:focus, select:focus, textarea:focus {
 .shell-topbar-ai-label { font-size: .74rem; font-weight: 700; }
 .shell-topbar-ai.active { background: linear-gradient(135deg, var(--indigo), var(--teal)); color: #fff; border-color: transparent; }
 
+/* ── Barra de procesos BPMN (seleccionar / crear / eliminar) ─────────────── */
+.bpmn-procbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 14px; margin-bottom: 10px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: linear-gradient(135deg, rgba(14,116,144,.06), rgba(79,70,229,.04));
+}
+.bpmn-procbar-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bpmn-procbar-left > svg { color: var(--teal); flex-shrink: 0; }
+.bpmn-procbar-label { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.bpmn-procbar-select {
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px;
+  font-size: .86rem; font-weight: 600; background: var(--surface); color: var(--text);
+  min-width: 180px; max-width: 320px;
+}
+.bpmn-procbar-count { font-size: .72rem; color: var(--muted); }
+.bpmn-procbar-actions { display: flex; gap: 8px; }
+.bpmn-del-btn { color: var(--clay); border-color: rgba(220,38,38,.35); }
+.bpmn-del-btn:hover { background: rgba(220,38,38,.08); border-color: var(--clay); }
+
 /* ── Identidad del diagrama BPMN (nombre + ubicación en el mapa) ──────────── */
 .bpmn-identity {
   display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
