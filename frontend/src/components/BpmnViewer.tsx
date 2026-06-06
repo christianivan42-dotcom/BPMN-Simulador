@@ -21,6 +21,22 @@ const ALL_NS = [
   `targetNamespace="http://bpmn.io/schema/bpmn"`,
 ].join(" ");
 
+// Diagrama en blanco SIEMPRE válido (con DI). Respaldo cuando el XML no tiene
+// elementos reconocibles o falla la importación, para no mostrar "no diagram to display".
+const BLANK_DIAGRAM = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions ${ALL_NS}>
+  <bpmn:process id="Process_1" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1" name="Inicio" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_1">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="180" y="120" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`;
+
 // ── BPMN node types known to bpmn-js ─────────────────────────────────────────
 const NODE_TYPES = [
   "startEvent","endEvent","task","userTask","serviceTask","scriptTask",
@@ -220,7 +236,7 @@ function prepareXml(raw: string): string {
   const clean = stripDiagram(xml);
   const { processId, nodes, flows } = parseElements(clean);
 
-  if (nodes.length === 0) return clean; // let bpmn-js show its own error
+  if (nodes.length === 0) return BLANK_DIAGRAM; // sin elementos → diagrama en blanco válido
 
   const layout = buildLayout(nodes, flows);
   return injectDiagram(clean, processId, layout, flows);
@@ -314,8 +330,16 @@ export function BpmnViewer({ xml, height = 480, caseId, onSaved, overlays, onCha
       } catch { /* ok */ }
 
       try {
-        const prepared = prepareXml(xml);
-        await modeler.importXML(prepared);
+        let prepared: string;
+        try { prepared = prepareXml(xml); } catch { prepared = BLANK_DIAGRAM; }
+        try {
+          await modeler.importXML(prepared);
+        } catch (impErr) {
+          // Recuperación: si el diagrama no se puede mostrar (XML vacío/ inválido),
+          // abre uno en blanco editable en vez de bloquear el editor.
+          console.warn("[BpmnViewer] import falló, abriendo diagrama en blanco:", impErr);
+          await modeler.importXML(BLANK_DIAGRAM);
+        }
         if (!cancelled) {
           setModelerReady(true);
           const canvas = modeler.get("canvas") as {
@@ -499,8 +523,16 @@ export function BpmnViewer({ xml, height = 480, caseId, onSaved, overlays, onCha
       if (!f || !modelerRef.current) return;
       try {
         const text = await f.text();
-        await modelerRef.current.importXML(text);
+        // Pasa por el preparador (reconstruye el diagrama/DI si falta) y, si aun
+        // así falla, abre en blanco — nunca deja el editor en estado de error.
+        try {
+          await modelerRef.current.importXML(prepareXml(text));
+        } catch (impErr) {
+          console.warn("[import xml] reintento en blanco:", impErr);
+          await modelerRef.current.importXML(BLANK_DIAGRAM);
+        }
         modelerRef.current.get("canvas").zoom("fit-viewport", "auto");
+        setError(null);
       } catch (e) {
         console.error("[import xml]", e);
         setError(`Error al importar: ${e}`);
