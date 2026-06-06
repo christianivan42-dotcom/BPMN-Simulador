@@ -8097,6 +8097,13 @@ input:focus, select:focus, textarea:focus {
 .sim-ia-btn svg { color: var(--indigo); flex-shrink: 0; }
 .sim-ia-btn-compare { border-color: rgba(14,116,144,.4); }
 .sim-ia-btn-compare svg { color: var(--teal); }
+.sim-ia-btn-primary {
+  background: linear-gradient(135deg, var(--indigo), var(--teal));
+  color: #fff; border-color: transparent; font-size: .84rem; padding: 11px 12px;
+}
+.sim-ia-btn-primary svg { color: #fff; }
+.sim-ia-btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: linear-gradient(135deg, var(--indigo), var(--teal)); }
+.sim-ia-btn-primary:disabled { opacity: .55; }
 .sim-ia-loading { display: flex; align-items: center; gap: 8px; padding: 12px; color: var(--muted); font-size: .8rem; }
 .sim-ia-answer {
   border: 1px solid var(--border); border-radius: 10px; padding: 12px;

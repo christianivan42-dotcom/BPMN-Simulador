@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Play, Pause, RotateCcw, X, Gauge, Activity, Boxes, GitBranch, Zap, Clock, MousePointerClick, ShieldAlert, Timer, Mail, AlertTriangle, ChevronUp, CalendarDays, Coins, Brain, Sparkles, Lightbulb, Wand2, GitCompare, Loader2, FileSpreadsheet } from "lucide-react";
+import { Play, Pause, RotateCcw, X, Gauge, Activity, Boxes, GitBranch, Zap, Clock, MousePointerClick, ShieldAlert, Timer, Mail, AlertTriangle, ChevronUp, CalendarDays, Coins, Brain, Sparkles, Lightbulb, Wand2, GitCompare, Loader2, FileSpreadsheet, Stethoscope, Scale } from "lucide-react";
 import { buildSimGraph, type SimGraph, type SimNode, type EventTrigger } from "../../bpmn/sim/simGraph";
 import { runSimulation, type SimConfig, type SimResult } from "../../bpmn/sim/simEngine";
 import { TokenAnimator, type AnimatorTick } from "../../bpmn/sim/tokenAnimator";
@@ -76,9 +76,11 @@ function comparisonSheet(asis: SimExportData, tobe: SimExportData): XlsSheet {
 }
 
 const AI_ROLE =
-  "Eres un consultor experto en simulación cuantitativa de procesos de negocio " +
-  "y en mejora de procesos: Lean (7 mudas, VSM), Six Sigma (DMAIC), Teoría de Restricciones (TOC), BPR/rediseño y automatización (RPA). " +
-  "Tu audiencia son analistas que NO dominan los parámetros de simulación: explica con claridad, en español, sé concreto y accionable.";
+  "Eres un consultor SENIOR experto en simulación cuantitativa de procesos de negocio y en mejora/rediseño de procesos " +
+  "(Lean — 7 mudas y VSM —, Six Sigma/DMAIC, Teoría de Restricciones, BPR y automatización RPA). " +
+  "Analizas el diagrama y los datos de simulación como un experto: razonas sobre cuellos de botella, esperas, utilización de recursos, costos y eficiencia, y traduces los números en decisiones. " +
+  "REGLAS de respuesta: en español; SIEMPRE con secciones y viñetas claras; CITA los números concretos del proceso (cycle time, espera, costo, %); sé decidido y accionable; evita generalidades vacías. " +
+  "Tu audiencia son analistas que no dominan la simulación.";
 
 const summaryKey = (scenario: string | undefined, companyId: string | undefined) =>
   `bpms_sim_summary_${scenario ?? "x"}_${companyId ?? "x"}`;
@@ -332,12 +334,18 @@ export function SimulationPanel({ modeler, onClose, scenario, processId, process
   }
 
   // ── Resúmenes de texto para alimentar a la IA ───────────────────────────────
+  const nodeName = (id: string) => graph.nodes.get(id)?.name || graph.nodes.get(id)?.bpmnType.replace("bpmn:", "") || id;
   function buildDiagramText(): string {
-    const L: string[] = [`Diagrama (${scenarioLabel}): ${taskNodes.length} tareas, ${gatewayNodes.length} compuertas, ${eventNodes.length} eventos, ${boundaryNodes.length} eventos de borde.`];
+    const L: string[] = [
+      `Proceso "${(processName || "").trim() || "(sin nombre)"}" — escenario ${scenarioLabel}.`,
+      `Estructura: ${taskNodes.length} tareas, ${gatewayNodes.length} compuertas de decisión, ${eventNodes.length} eventos, ${boundaryNodes.length} eventos de borde.`,
+    ];
     if (taskNodes.length) L.push("Tareas: " + taskNodes.map((n) => `"${n.name || n.id}"`).join(", "));
     if (gatewayNodes.length) L.push("Compuertas (decisiones): " + gatewayNodes.map((g) => `"${g.name || g.id}" (${g.outgoing.length} ramas)`).join(", "));
     if (eventNodes.length) L.push("Eventos/esperas: " + eventNodes.map((e) => `"${e.name || e.id}"`).join(", "));
-    if (boundaryNodes.length) L.push("Eventos de borde: " + boundaryNodes.map((b) => `"${b.name || b.id}" en "${b.attachedTo ? (graph.nodes.get(b.attachedTo)?.name ?? b.attachedTo) : "?"}"`).join(", "));
+    if (boundaryNodes.length) L.push("Eventos de borde: " + boundaryNodes.map((b) => `"${b.name || b.id}" en "${b.attachedTo ? nodeName(b.attachedTo) : "?"}"`).join(", "));
+    const flows = [...graph.flows.values()];
+    if (flows.length) L.push("Secuencia del flujo: " + flows.slice(0, 40).map((f) => `${nodeName(f.source)}→${nodeName(f.target)}${f.name ? ` [${f.name}]` : ""}`).join("; "));
     return L.join("\n");
   }
   function buildResultText(r: SimResult): string {
@@ -351,7 +359,18 @@ export function SimulationPanel({ modeler, onClose, scenario, processId, process
       `Por actividad (visitas · proc · espera · costo):`,
       ...r.activities.slice(0, 12).map((a) => `  · ${a.name}: ${a.visits} · ${fmtTime(a.visits ? a.totalProcessing / a.visits : 0)} · ${fmtTime(a.visits ? a.totalWaiting / a.visits : 0)} · ${r.currency}${a.cost.toFixed(2)}`),
     ];
-    if (r.resources.length) L.push("Recursos (utilización): " + r.resources.map((rs) => `${rs.name} ${(rs.utilization * 100).toFixed(0)}%`).join(", "));
+    // Cuellos de botella explícitos (mayor procesamiento y mayor espera)
+    const avgP = (a: SimResult["activities"][number]) => (a.visits ? a.totalProcessing / a.visits : 0);
+    const avgW = (a: SimResult["activities"][number]) => (a.visits ? a.totalWaiting / a.visits : 0);
+    const topProc = [...r.activities].sort((a, b) => avgP(b) - avgP(a))[0];
+    const topWait = [...r.activities].sort((a, b) => avgW(b) - avgW(a))[0];
+    if (topProc) L.push(`Actividad más larga: "${topProc.name}" (${fmtTime(avgP(topProc))} de proceso).`);
+    if (topWait && avgW(topWait) > 0) L.push(`Mayor espera (posible cuello de botella): "${topWait.name}" (${fmtTime(avgW(topWait))} en cola).`);
+    if (r.resources.length) {
+      L.push("Recursos (utilización): " + r.resources.map((rs) => `${rs.name} ${(rs.utilization * 100).toFixed(0)}%`).join(", "));
+      const over = r.resources.filter((rs) => rs.utilization > 0.85);
+      if (over.length) L.push("Recursos saturados (>85%): " + over.map((rs) => rs.name).join(", "));
+    }
     return L.join("\n");
   }
 
@@ -408,23 +427,60 @@ export function SimulationPanel({ modeler, onClose, scenario, processId, process
     }
   }
 
-  function askCompare() {
+  // Diagnóstico completo del AS-IS + propuesta de cómo debería ser el TO-BE
+  function askDiagnose() {
+    void askAi(
+      "Diagnóstico del AS-IS y diseño del TO-BE",
+      "Actúa como consultor de procesos. Con el diagrama y los resultados del AS-IS, entrega tu análisis EXACTAMENTE en estas secciones:\n" +
+      "1) **Diagnóstico** — qué funciona mal hoy, con números.\n" +
+      "2) **Cuellos de botella** — qué actividad limita el proceso y por qué.\n" +
+      "3) **Desperdicios (mudas)** — esperas, retrabajos, sobre-costos, sobre-procesamiento.\n" +
+      "4) **Qué mejorar y cómo** — acciones concretas.\n" +
+      "5) **Diseño del TO-BE propuesto** — cambios específicos al flujo: automatizar, eliminar, fusionar o paralelizar pasos, redistribuir recursos, ajustar políticas/horarios.\n" +
+      "6) **Impacto esperado** — efecto estimado en cycle time, espera y costo.\n" +
+      "Usa esos títulos con viñetas y cita números del proceso.",
+      true,
+    );
+  }
+
+  function gatherBoth(): { asis: string; tobe: string } | null {
     const me = result ? buildResultText(result) : localStorage.getItem(summaryKey(scenario, processId));
-    const otherScenario = scenario === "asis" ? "tobe" : "asis";
-    const other = localStorage.getItem(summaryKey(otherScenario, processId));
-    if (!other) {
-      setSection("ia"); setAiTitle("Comparar AS-IS vs TO-BE"); setAiAnswer(null);
-      setAiError(`Primero ejecuta la simulación del ${otherScenario === "asis" ? "AS-IS" : "TO-BE"} (en la otra pestaña) para poder comparar.`);
-      return;
-    }
-    if (!me) { setSection("ia"); setAiError("Ejecuta primero esta simulación."); return; }
-    const asis = scenario === "asis" ? me : other;
-    const tobe = scenario === "asis" ? other : me;
+    const other = localStorage.getItem(summaryKey(scenario === "asis" ? "tobe" : "asis", processId));
+    if (!me || !other) return null;
+    return { asis: scenario === "asis" ? me : other, tobe: scenario === "asis" ? other : me };
+  }
+  function needBothError(): boolean {
+    if (gatherBoth()) return false;
+    const falta = scenario === "asis" ? "TO-BE" : "AS-IS";
+    setSection("ia"); setAiAnswer(null);
+    setAiError(`Para comparar necesito AMBAS simulaciones. Ejecuta también el ${falta} (en la otra pestaña) y vuelve.`);
+    return true;
+  }
+
+  function askCompare() {
+    if (needBothError()) return;
+    const both = gatherBoth()!;
     void askAi(
       "Comparar AS-IS vs TO-BE",
-      "Compara los resultados de la simulación AS-IS contra el TO-BE. Cuantifica las diferencias (cycle time, espera, costo, eficiencia, utilización), di qué mejoró y qué empeoró, y concluye si el rediseño TO-BE vale la pena y qué ajustar.",
+      "Compara los resultados de la simulación AS-IS contra el TO-BE: cuantifica las diferencias (cycle time, espera, costo, eficiencia, throughput, utilización) con el % de mejora de cada métrica, y di qué mejoró y qué empeoró. Usa una tabla si ayuda.",
       false,
-      `=== AS-IS ===\n${asis}\n\n=== TO-BE ===\n${tobe}`,
+      `=== RESULTADOS AS-IS ===\n${both.asis}\n\n=== RESULTADOS TO-BE ===\n${both.tobe}`,
+    );
+  }
+
+  // Veredicto final: la IA decide si el TO-BE vale la pena
+  function askVerdict() {
+    if (needBothError()) return;
+    const both = gatherBoth()!;
+    void askAi(
+      "Veredicto final: AS-IS vs TO-BE",
+      "Eres el consultor que toma la decisión. Con AMBOS resultados, entrega tu veredicto EXACTAMENTE en estas secciones:\n" +
+      "1) **Comparación cuantitativa** — cycle time, espera, costo, eficiencia, throughput y utilización, con el % de mejora de cada uno.\n" +
+      "2) **Qué mejoró y por qué** — vincúlalo a los cambios del TO-BE.\n" +
+      "3) **Riesgos / trade-offs** del TO-BE.\n" +
+      "4) **VEREDICTO FINAL** — ¿se implementa el TO-BE? ¿qué ajustar antes? Sé tajante y justifícalo con los números.",
+      false,
+      `=== RESULTADOS AS-IS ===\n${both.asis}\n\n=== RESULTADOS TO-BE ===\n${both.tobe}`,
     );
   }
 
@@ -703,9 +759,26 @@ export function SimulationPanel({ modeler, onClose, scenario, processId, process
           <div className="sim-ia">
             <div className="sim-ia-intro">
               <Brain size={16} />
-              <p>Asistente de simulación para <b>{scenarioLabel}</b>. Te ayuda a entender y llenar los datos, interpretar resultados y mejorar el proceso.</p>
+              <p>
+                Consultor de procesos para <b>{scenarioLabel}</b>. Entiende el diagrama y los resultados para
+                {scenario === "tobe"
+                  ? <> dar el <b>veredicto final</b> AS-IS vs TO-BE.</>
+                  : <> <b>diagnosticar</b> el AS-IS y proponer cómo debería ser el <b>TO-BE</b>.</>}
+              </p>
             </div>
             <div className="sim-ia-actions">
+              {/* Acción principal según el escenario */}
+              {scenario === "tobe" ? (
+                <button className="sim-ia-btn sim-ia-btn-primary" disabled={aiBusy} onClick={askVerdict}>
+                  <Scale size={15} /> Veredicto final (AS-IS vs TO-BE)
+                </button>
+              ) : (
+                <button className="sim-ia-btn sim-ia-btn-primary" disabled={aiBusy || !result} onClick={askDiagnose}>
+                  <Stethoscope size={15} /> Diagnosticar AS-IS y diseñar el TO-BE {result ? "" : "(ejecuta primero)"}
+                </button>
+              )}
+
+              {/* Acciones de apoyo */}
               <button className="sim-ia-btn" disabled={aiBusy} onClick={() => void askAi("Ayuda para llenar los datos", "Explícame en términos simples qué significa cada dato que debo llenar para simular ESTE diagrama (llegadas, distribución, duración por tarea, recursos, compuertas, eventos de borde, horarios). Luego sugiéreme valores razonables para cada tarea, compuerta y evento según sus nombres. Sé concreto y por elemento.", false)}>
                 <Wand2 size={14} /> Ayúdame a llenar los datos
               </button>
