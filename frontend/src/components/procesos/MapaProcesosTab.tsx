@@ -1,11 +1,26 @@
-import { useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { CheckCircle2, Loader2, Plus, Save, Sparkles, Trash2, Workflow } from "lucide-react";
 import {
   updateCompany,
   type Company,
   type ProcessMapCategory,
   type ProcessMapItem,
 } from "../../api";
+
+/** Lee el índice de procesos BPMN y los agrupa por ítem del mapa (mapItemId). */
+function loadBpmnByItem(companyId: string): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  try {
+    const raw = localStorage.getItem(`bpms_bpmn_index_${companyId}`);
+    if (raw) {
+      const arr = JSON.parse(raw) as Array<{ name?: string; mapItemId?: string }>;
+      for (const p of arr) {
+        if (p.mapItemId) (out[p.mapItemId] ??= []).push((p.name || "Proceso").trim() || "Proceso");
+      }
+    }
+  } catch { /* ignore */ }
+  return out;
+}
 
 const CATS: Array<{ id: ProcessMapCategory; label: string; color: string; hint: string }> = [
   { id: "estrategico", label: "Procesos estratégicos", color: "var(--teal)", hint: "Dirección, planificación y mejora" },
@@ -27,6 +42,9 @@ export function MapaProcesosTab({ company, onCompanyUpdated }: {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  // Procesos BPMN modelados, agrupados por el ítem del mapa al que pertenecen.
+  const bpmnByItem = useMemo(() => loadBpmnByItem(company.id), [company.id]);
 
   useEffect(() => { setItems(company.mapa_procesos); }, [company.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -107,15 +125,25 @@ export function MapaProcesosTab({ company, onCompanyUpdated }: {
               </header>
               <div className="mapa-boxes">
                 {boxes.length === 0 && <p className="muted mapa-empty">Sin procesos. Pulsa + o «Diseñar con IA».</p>}
-                {boxes.map((b) => (
-                  <div key={b.id} className="mapa-box" style={{ borderTopColor: cat.color }}>
-                    <button type="button" className="mapa-box-del" onClick={() => remove(b.id)}><Trash2 size={12} /></button>
-                    <input className="mapa-box-name" value={b.nombre}
-                      onChange={(e) => patch(b.id, { nombre: e.target.value })} />
-                    <input className="mapa-box-desc" value={b.descripcion} placeholder="Descripción…"
-                      onChange={(e) => patch(b.id, { descripcion: e.target.value })} />
-                  </div>
-                ))}
+                {boxes.map((b) => {
+                  const procs = bpmnByItem[b.id] ?? [];
+                  return (
+                    <div key={b.id} className="mapa-box" style={{ borderTopColor: cat.color }}>
+                      <button type="button" className="mapa-box-del" onClick={() => remove(b.id)}><Trash2 size={12} /></button>
+                      <input className="mapa-box-name" value={b.nombre}
+                        onChange={(e) => patch(b.id, { nombre: e.target.value })} />
+                      <input className="mapa-box-desc" value={b.descripcion} placeholder="Descripción…"
+                        onChange={(e) => patch(b.id, { descripcion: e.target.value })} />
+                      {procs.length > 0 && (
+                        <div className="mapa-box-bpmn" title="Procesos BPMN modelados aquí (edítalos en la pestaña BPMN)">
+                          {procs.map((name, i) => (
+                            <span key={i} className="mapa-bpmn-chip"><Workflow size={11} /> {name}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           );

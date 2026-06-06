@@ -8144,6 +8144,15 @@ input:focus, select:focus, textarea:focus {
 .bpmn-del-btn { color: var(--clay); border-color: rgba(220,38,38,.35); }
 .bpmn-del-btn:hover { background: rgba(220,38,38,.08); border-color: var(--clay); }
 
+/* Procesos BPMN modelados, mostrados dentro de cada caja del mapa */
+.mapa-box-bpmn { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.mapa-bpmn-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .66rem; font-weight: 600; color: var(--teal);
+  background: var(--teal-soft); border-radius: 999px; padding: 2px 8px;
+}
+.mapa-bpmn-chip svg { flex-shrink: 0; }
+
 /* ── Identidad del diagrama BPMN (nombre + ubicación en el mapa) ──────────── */
 .bpmn-identity {
   display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
