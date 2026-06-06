@@ -1,0 +1,49 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Entornos virtuales (cualquier nombre)
+.venv/
+venv/
+venv_*/
+env/
+**/venv_mac/
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+.tools/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# ── Variables de entorno y SECRETOS (NUNCA subir) ─────────────────────────────
+.env
+*.env
+!.env.example
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# ── Datos generados / runtime (no son código fuente) ──────────────────────────
+storage/
+uploads/
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Archivos sueltos / exports de prueba ──────────────────────────────────────
+proceso 1 (es) (1).bpmn
+*.bak
+*.tmp
+
+# ── OS / editores ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
