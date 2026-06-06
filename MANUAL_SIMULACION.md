@@ -210,5 +210,3 @@ Si no sabes qué poner o qué significa un resultado, el asistente te ayuda:
 > horarios y costos a medida que necesites más realismo.
 
 ---
-
-*Hecho con el simulador de procesos de **Agente BPMS — Copiloto Cognitivo de Procesos**.*
