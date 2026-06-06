@@ -141,7 +141,7 @@ export function App() {
         />
       )}
 
-      {activeModule === "conocimiento" && <ConocimientoModule />}
+      {activeModule === "conocimiento" && company && <ConocimientoModule company={company} />}
     </AppShell>
   );
 }

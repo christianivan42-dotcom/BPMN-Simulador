@@ -4,10 +4,86 @@ import { Loader2, Maximize2, RefreshCw, Search, Sparkles, X } from "lucide-react
 import {
   cognitiveAsk,
   getOrganizationGraph,
+  type Company,
   type OrgGraph,
   type OrgGraphNode,
+  type OrgGraphEdge,
 } from "../api";
 import { ChatMarkdown } from "./ChatMarkdown";
+
+// ── Grafo construido desde lo que el usuario realmente crea ──────────────────
+// (empresa → mapa de procesos por categoría → diagramas BPMN AS-IS/TO-BE).
+const CAT_INFO: Record<string, string> = {
+  estrategico: "Procesos estratégicos",
+  operativo: "Procesos operativos",
+  apoyo: "Procesos de apoyo",
+};
+
+/** ¿El XML tiene contenido real (más que el evento de inicio en blanco)? */
+function hasRealDiagram(xml: string | null): boolean {
+  if (!xml) return false;
+  return /<bpmn:(task|userTask|serviceTask|manualTask|scriptTask|sendTask|receiveTask|businessRuleTask|exclusiveGateway|parallelGateway|inclusiveGateway|eventBasedGateway|endEvent|intermediateCatchEvent|intermediateThrowEvent|subProcess|callActivity)/i.test(xml);
+}
+
+function buildLocalOrgGraph(company: Company): OrgGraph {
+  const nodes: OrgGraphNode[] = [];
+  const edges: OrgGraphEdge[] = [];
+  const companyId = `company:${company.id}`;
+  nodes.push({
+    id: companyId,
+    label: company.nombre_corto || company.razon_social || "Mi organización",
+    type: "company",
+    sector: company.sector ?? null,
+  });
+
+  const items = company.mapa_procesos ?? [];
+  const mapNodeId = (id: string) => `map:${id}`;
+  for (const cat of ["estrategico", "operativo", "apoyo"] as const) {
+    const group = items.filter((i) => i.categoria === cat);
+    if (group.length === 0) continue;
+    const catId = `cat:${cat}`;
+    nodes.push({ id: catId, label: CAT_INFO[cat], type: "process", level: 0, area: cat });
+    edges.push({ source: companyId, target: catId, rel: "categoría" });
+    for (const it of group) {
+      const nid = mapNodeId(it.id);
+      nodes.push({ id: nid, label: it.nombre || "Proceso", type: "process", level: 1, area: cat });
+      edges.push({ source: catId, target: nid, rel: "proceso" });
+    }
+  }
+
+  // Diagrama BPMN: nombre + ubicación (compartidos por AS-IS/TO-BE) desde localStorage.
+  // Se ubica BAJO el proceso del mapa elegido; si no, cuelga de la empresa.
+  let meta: { name?: string; mapItemId?: string } = {};
+  try { const raw = localStorage.getItem(`bpms_bpmn_meta_${company.id}`); if (raw) meta = JSON.parse(raw); } catch { /* ok */ }
+  const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const dgName = (meta.name || "").trim();
+  const locatedItem = meta.mapItemId ? items.find((i) => i.id === meta.mapItemId) : undefined;
+  const parent = locatedItem ? mapNodeId(locatedItem.id) : companyId;
+  const asis = read(`bpms_bpmn_asis_${company.id}`) ?? "";
+  const tobe = read(`bpms_bpmn_tobe_${company.id}`) ?? "";
+  const hasAsis = hasRealDiagram(asis);
+  const hasTobe = hasRealDiagram(tobe);
+  // Nodo "proceso BPMN" si hay nombre o algún diagrama modelado
+  if (dgName || hasAsis || hasTobe) {
+    const procId = `bpmnproc:${company.id}`;
+    nodes.push({ id: procId, label: dgName || "Proceso BPMN", type: "process", level: 2, area: locatedItem?.categoria ?? null });
+    edges.push({ source: parent, target: procId, rel: "modela" });
+    if (hasAsis) {
+      const id = `bpmn:asis:${company.id}`;
+      nodes.push({ id, label: "Diagrama AS-IS", type: "artifact", artifact_type: "BPMN AS-IS" });
+      edges.push({ source: procId, target: id, rel: "AS-IS" });
+    }
+    if (hasTobe) {
+      const id = `bpmn:tobe:${company.id}`;
+      nodes.push({ id, label: "Diagrama TO-BE", type: "artifact", artifact_type: "BPMN TO-BE" });
+      edges.push({ source: procId, target: id, rel: "TO-BE" });
+    }
+  }
+
+  const by_type: Record<string, number> = {};
+  for (const n of nodes) by_type[n.type] = (by_type[n.type] ?? 0) + 1;
+  return { nodes, edges, stats: { nodes: nodes.length, edges: edges.length, by_type } };
+}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * ObsidianGraph — vista tipo Obsidian de TODA la memoria/registro de la empresa.
@@ -54,7 +130,7 @@ function nodeVal(n: OrgGraphNode): number {
   return TYPE_STYLE[n.type]?.val ?? 4;
 }
 
-export function ObsidianGraph() {
+export function ObsidianGraph({ company }: { company?: Company }) {
   const [graph, setGraph] = useState<OrgGraph | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -75,11 +151,19 @@ export function ObsidianGraph() {
   // ── Carga ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     setLoading(true); setErr(null);
+    // Si tenemos la empresa, construimos el grafo desde lo que el usuario crea
+    // (mapa de procesos + diagramas BPMN). Si no, caemos al grafo del backend.
+    if (company) {
+      try { setGraph(buildLocalOrgGraph(company)); }
+      catch { setErr("No se pudo construir el mapa de conocimiento"); }
+      setLoading(false);
+      return;
+    }
     getOrganizationGraph()
       .then(setGraph)
       .catch(() => setErr("No se pudo cargar el grafo de la organización"))
       .finally(() => setLoading(false));
-  }, [reload]);
+  }, [reload, company]);
 
   // ── Tamaño responsivo ────────────────────────────────────────────────────────
   useEffect(() => {
