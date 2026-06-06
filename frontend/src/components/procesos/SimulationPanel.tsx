@@ -749,7 +749,8 @@ export function SimulationPanel({ modeler, onClose, scenario, processId, process
         {section === "results" && result && (
           <ResultsView
             result={result}
-            onInterpret={() => void askAi("Interpretación de resultados", `Interpreta los resultados de la simulación de ${scenarioLabel}. Identifica cuellos de botella, esperas, sobrecostos y baja eficiencia con base en los números, y di concretamente QUÉ se puede mejorar y por qué.`, true)}
+            expertLabel={scenario === "tobe" ? "Veredicto IA (AS-IS vs TO-BE)" : "Diagnóstico experto IA"}
+            onInterpret={() => (scenario === "tobe" ? askVerdict() : askDiagnose())}
             onExport={exportCurrent}
             onExportBoth={exportBoth}
           />
@@ -811,7 +812,7 @@ export function SimulationPanel({ modeler, onClose, scenario, processId, process
   );
 }
 
-function ResultsView({ result, onInterpret, onExport, onExportBoth }: { result: SimResult; onInterpret: () => void; onExport: () => void; onExportBoth: () => void }) {
+function ResultsView({ result, onInterpret, onExport, onExportBoth, expertLabel }: { result: SimResult; onInterpret: () => void; onExport: () => void; onExportBoth: () => void; expertLabel: string }) {
   const cur = result.currency;
   const kpis: Array<[string, string]> = [
     ["Cycle time (reloj)", fmtTime(result.avgCycle)],
@@ -827,7 +828,7 @@ function ResultsView({ result, onInterpret, onExport, onExportBoth }: { result: 
   return (
     <div className="sim-results">
       <div className="sim-results-toolbar">
-        <button className="sim-ia-inline-btn" onClick={onInterpret}><Sparkles size={13} /> Interpretar con IA</button>
+        <button className="sim-ia-inline-btn" onClick={onInterpret}><Sparkles size={13} /> {expertLabel}</button>
         <button className="sim-xls-btn" onClick={onExport} title="Exportar este escenario a Excel"><FileSpreadsheet size={13} /> Excel</button>
         <button className="sim-xls-btn" onClick={onExportBoth} title="Exportar AS-IS + TO-BE con comparación"><FileSpreadsheet size={13} /> AS-IS + TO-BE</button>
       </div>
