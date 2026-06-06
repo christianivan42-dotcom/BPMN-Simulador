@@ -40,7 +40,7 @@ Define el "mundo" de la simulación. Está en la pestaña **Configuración → E
 
 ---
 
-## 3. Recursos — **(esto es lo que preguntabas)** 👷
+## 3. Recursos — **** 👷
 
 Un **recurso** es **quién o qué ejecuta las tareas**: una persona, un rol, una máquina, un
 equipo. Ejemplos: *Operario*, *Analista*, *Agente de soporte*, *Montacargas*.
@@ -72,12 +72,6 @@ Porque en la vida real **la capacidad es limitada**. Si tienes **2 operarios** y
 > - **No** (deja la tarea en **"Sin recurso (24/7)"**), si solo te interesa el tiempo de
 >   trabajo puro, sin límite de capacidad.
 
-### ❓ "¿BIMP no llenaba recursos?"
-
-**Sí los llena.** De hecho **BIMP es más estricto**: obliga a que **toda** tarea tenga un
-recurso y le asigna *"Default Resource"* automáticamente. Aquí es **opcional**: puedes dejar
-una tarea **"Sin recurso (24/7)"** (capacidad infinita) cuando no quieras modelar contención.
-Así que esta herramienta hace lo mismo que BIMP en recursos, pero con **más flexibilidad**.
 
 ---
 
