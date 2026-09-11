@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TO-BE — Aprobación de crédito rediseñada.
+  Cambios frente al AS-IS: alta por portal web, validación documental y scoring
+  automáticos, eliminación del bucle de retrabajo y del comité para los casos de
+  bajo riesgo (solo los de alto riesgo siguen pasando por comité).
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  id="Definitions_CreditoToBe"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_CreditoToBe" name="Aprobación de crédito (TO-BE)" isExecutable="false">
+
+    <bpmn:startEvent id="Start_Portal" name="Solicitud enviada por el portal">
+      <bpmn:outgoing>Flow_01</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_AltaAuto" name="Alta automática de la solicitud">
+      <bpmn:incoming>Flow_01</bpmn:incoming>
+      <bpmn:outgoing>Flow_02</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ValidarAuto" name="Validar documentación automáticamente">
+      <bpmn:incoming>Flow_02</bpmn:incoming>
+      <bpmn:outgoing>Flow_03</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gw_Documentos" name="¿Documentación completa?">
+      <bpmn:incoming>Flow_03</bpmn:incoming>
+      <bpmn:outgoing>Flow_04</bpmn:outgoing>
+      <bpmn:outgoing>Flow_05</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:sendTask id="Task_Notificar" name="Notificar al cliente que faltan documentos">
+      <bpmn:incoming>Flow_04</bpmn:incoming>
+      <bpmn:outgoing>Flow_06</bpmn:outgoing>
+    </bpmn:sendTask>
+
+    <bpmn:endEvent id="End_Pendiente" name="Pendiente de documentación">
+      <bpmn:incoming>Flow_06</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:businessRuleTask id="Task_Scoring" name="Scoring crediticio automático">
+      <bpmn:incoming>Flow_05</bpmn:incoming>
+      <bpmn:outgoing>Flow_07</bpmn:outgoing>
+    </bpmn:businessRuleTask>
+
+    <bpmn:exclusiveGateway id="Gw_Riesgo" name="¿Riesgo alto?">
+      <bpmn:incoming>Flow_07</bpmn:incoming>
+      <bpmn:outgoing>Flow_08</bpmn:outgoing>
+      <bpmn:outgoing>Flow_09</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_Comite" name="Revisar en comité (solo riesgo alto)">
+      <bpmn:incoming>Flow_08</bpmn:incoming>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_AprobacionAuto" name="Aprobación automática por scoring">
+      <bpmn:incoming>Flow_09</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_Desembolsar" name="Formalizar y desembolsar en línea">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+      <bpmn:outgoing>Flow_12</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="End_Otorgado" name="Crédito otorgado">
+      <bpmn:incoming>Flow_12</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_01" sourceRef="Start_Portal" targetRef="Task_AltaAuto" />
+    <bpmn:sequenceFlow id="Flow_02" sourceRef="Task_AltaAuto" targetRef="Task_ValidarAuto" />
+    <bpmn:sequenceFlow id="Flow_03" sourceRef="Task_ValidarAuto" targetRef="Gw_Documentos" />
+    <bpmn:sequenceFlow id="Flow_04" name="No" sourceRef="Gw_Documentos" targetRef="Task_Notificar" />
+    <bpmn:sequenceFlow id="Flow_05" name="Sí" sourceRef="Gw_Documentos" targetRef="Task_Scoring" />
+    <bpmn:sequenceFlow id="Flow_06" sourceRef="Task_Notificar" targetRef="End_Pendiente" />
+    <bpmn:sequenceFlow id="Flow_07" sourceRef="Task_Scoring" targetRef="Gw_Riesgo" />
+    <bpmn:sequenceFlow id="Flow_08" name="Sí" sourceRef="Gw_Riesgo" targetRef="Task_Comite" />
+    <bpmn:sequenceFlow id="Flow_09" name="No" sourceRef="Gw_Riesgo" targetRef="Task_AprobacionAuto" />
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_Comite" targetRef="Task_Desembolsar" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_AprobacionAuto" targetRef="Task_Desembolsar" />
+    <bpmn:sequenceFlow id="Flow_12" sourceRef="Task_Desembolsar" targetRef="End_Otorgado" />
+
+  </bpmn:process>
+</bpmn:definitions>

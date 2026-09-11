@@ -1,0 +1,14 @@
+{
+  "name": "bpms-capturas",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Genera las capturas de pantalla del manual (docs/img) recorriendo la aplicación con un navegador automatizado.",
+  "scripts": {
+    "setup": "npm install && npx playwright install chromium",
+    "capturas": "node capturas.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
+  }
+}

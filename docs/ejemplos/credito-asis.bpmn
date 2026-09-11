@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  AS-IS — Aprobación de crédito de consumo (proceso actual, manual).
+  Sin coordenadas a propósito: el editor recalcula el layout al importarlo.
+  Las probabilidades de cada rama y las demoras se introducen en el simulador
+  (ver docs/MANUAL.md).
+-->
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  id="Definitions_CreditoAsIs"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_CreditoAsIs" name="Aprobación de crédito (AS-IS)" isExecutable="false">
+
+    <bpmn:startEvent id="Start_Solicitud" name="Solicitud recibida en sucursal">
+      <bpmn:outgoing>Flow_01</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:userTask id="Task_Registrar" name="Registrar solicitud en el sistema">
+      <bpmn:incoming>Flow_01</bpmn:incoming>
+      <bpmn:outgoing>Flow_02</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:userTask id="Task_Verificar" name="Verificar documentación del cliente">
+      <bpmn:incoming>Flow_02</bpmn:incoming>
+      <bpmn:incoming>Flow_04b</bpmn:incoming>
+      <bpmn:outgoing>Flow_03</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gw_Documentos" name="¿Documentación completa?">
+      <bpmn:incoming>Flow_03</bpmn:incoming>
+      <bpmn:outgoing>Flow_04a</bpmn:outgoing>
+      <bpmn:outgoing>Flow_05</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_PedirDocs" name="Solicitar documentos faltantes al cliente">
+      <bpmn:incoming>Flow_04a</bpmn:incoming>
+      <bpmn:outgoing>Flow_04c</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:intermediateCatchEvent id="Event_Documentos" name="Documentos recibidos del cliente">
+      <bpmn:incoming>Flow_04c</bpmn:incoming>
+      <bpmn:outgoing>Flow_04b</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="Msg_Documentos" />
+    </bpmn:intermediateCatchEvent>
+
+    <bpmn:userTask id="Task_Evaluar" name="Evaluar riesgo crediticio manualmente">
+      <bpmn:incoming>Flow_05</bpmn:incoming>
+      <bpmn:outgoing>Flow_06</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:intermediateCatchEvent id="Event_EsperaComite" name="Esperar sesión del comité">
+      <bpmn:incoming>Flow_06</bpmn:incoming>
+      <bpmn:outgoing>Flow_07</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="Timer_Comite" />
+    </bpmn:intermediateCatchEvent>
+
+    <bpmn:userTask id="Task_Comite" name="Aprobar en comité de crédito">
+      <bpmn:incoming>Flow_07</bpmn:incoming>
+      <bpmn:outgoing>Flow_08</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gw_Decision" name="¿Crédito aprobado?">
+      <bpmn:incoming>Flow_08</bpmn:incoming>
+      <bpmn:outgoing>Flow_09</bpmn:outgoing>
+      <bpmn:outgoing>Flow_10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="Task_Desembolsar" name="Formalizar y desembolsar">
+      <bpmn:incoming>Flow_09</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:endEvent id="End_Otorgado" name="Crédito otorgado">
+      <bpmn:incoming>Flow_11</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_Rechazado" name="Solicitud rechazada">
+      <bpmn:incoming>Flow_10</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_01" sourceRef="Start_Solicitud" targetRef="Task_Registrar" />
+    <bpmn:sequenceFlow id="Flow_02" sourceRef="Task_Registrar" targetRef="Task_Verificar" />
+    <bpmn:sequenceFlow id="Flow_03" sourceRef="Task_Verificar" targetRef="Gw_Documentos" />
+    <bpmn:sequenceFlow id="Flow_04a" name="No" sourceRef="Gw_Documentos" targetRef="Task_PedirDocs" />
+    <bpmn:sequenceFlow id="Flow_04c" sourceRef="Task_PedirDocs" targetRef="Event_Documentos" />
+    <bpmn:sequenceFlow id="Flow_04b" sourceRef="Event_Documentos" targetRef="Task_Verificar" />
+    <bpmn:sequenceFlow id="Flow_05" name="Sí" sourceRef="Gw_Documentos" targetRef="Task_Evaluar" />
+    <bpmn:sequenceFlow id="Flow_06" sourceRef="Task_Evaluar" targetRef="Event_EsperaComite" />
+    <bpmn:sequenceFlow id="Flow_07" sourceRef="Event_EsperaComite" targetRef="Task_Comite" />
+    <bpmn:sequenceFlow id="Flow_08" sourceRef="Task_Comite" targetRef="Gw_Decision" />
+    <bpmn:sequenceFlow id="Flow_09" name="Sí" sourceRef="Gw_Decision" targetRef="Task_Desembolsar" />
+    <bpmn:sequenceFlow id="Flow_10" name="No" sourceRef="Gw_Decision" targetRef="End_Rechazado" />
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_Desembolsar" targetRef="End_Otorgado" />
+
+  </bpmn:process>
+</bpmn:definitions>

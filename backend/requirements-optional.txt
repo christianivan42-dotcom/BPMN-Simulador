@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Extras OPCIONALES — instala solo el bloque de la feature que vayas a activar.
+#
+#   pip install -r requirements-optional.txt        (todo, pesa varios GB)
+#
+# o, mejor, instala solo lo que necesites:
+#
+#   USE_POSTGRES=true   →  pip install "psycopg2-binary>=2.9,<3.0"
+#   ENABLE_QDRANT=true  →  pip install "qdrant-client>=1.9,<2.0" "sentence-transformers>=3.0,<4.0"
+#   OTEL_ENABLED=true   →  pip install opentelemetry-sdk opentelemetry-instrumentation-fastapi \
+#                                      opentelemetry-instrumentation-sqlalchemy \
+#                                      opentelemetry-exporter-otlp-proto-grpc
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Postgres (solo si USE_POSTGRES=true) ─────────────────────────────────────
+psycopg2-binary>=2.9,<3.0
+
+# ── Vector store / RAG semántico (solo si ENABLE_QDRANT=true) ────────────────
+# ¡Ojo! sentence-transformers instala PyTorch (~2.5 GB).
+qdrant-client>=1.9,<2.0
+sentence-transformers>=3.0,<4.0
+
+# ── Observabilidad OpenTelemetry (solo si OTEL_ENABLED=true) ─────────────────
+opentelemetry-sdk>=1.25,<2.0
+opentelemetry-instrumentation-fastapi>=0.46b0
+opentelemetry-instrumentation-sqlalchemy>=0.46b0
+opentelemetry-exporter-otlp-proto-grpc>=1.25,<2.0

@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Dependencias MÍNIMAS para correr la aplicación (API + simulador + asistente IA)
+#
+#   pip install -r requirements.txt
+#
+# Los extras opcionales (Postgres, Qdrant/embeddings, Redis/Celery, OpenTelemetry)
+# viven en requirements-optional.txt y SOLO hacen falta si activas esas features
+# en el .env. No los instales "por si acaso": sentence-transformers arrastra
+# PyTorch (~2.5 GB) y no se usa mientras ENABLE_QDRANT=false.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── API / Web ─────────────────────────────────────────────────────────────────
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+pydantic-settings>=2.4,<3.0
+python-dotenv>=1.0,<2.0
+
+# ── Base de datos (SQLite por defecto, sin dependencias externas) ─────────────
+sqlalchemy>=2.0,<3.0
+alembic>=1.13,<2.0
+
+# ── Cliente HTTP (LLMs vía REST: Gemini, Deepseek, Ollama) ───────────────────
+# Gemini se llama por REST: el SDK google-generativeai está obsoleto y sus
+# dependencias rompían `pip install` en Windows por el límite de rutas largas.
+httpx>=0.27,<1.0
+
+# ── LLMs cloud (import perezoso: solo se cargan si configuras su API key) ─────
+groq>=0.11,<1.0
+
+# ── Logging estructurado ─────────────────────────────────────────────────────
+structlog>=25.0,<26.0
+
+# ── Tests ────────────────────────────────────────────────────────────────────
+pytest>=8.0,<9.0
